@@ -312,7 +312,7 @@ class ElasticsearchSender(_EsOsLogSenderBase):
             raise ValueError("Version has not been set")
         index_url = super()._index_url(index_name)
         if self._version.major <= self._VERSION_WITH_MAPPING_TYPE_SUPPORT:
-            index_url = f"{index_url}?include_type_name=true"
+            index_url = f"{index_url}?include_type_name=false"
         return index_url
 
     def _message_header(self, index_name: str) -> Dict[str, Any]:
