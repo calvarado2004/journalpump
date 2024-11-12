@@ -297,9 +297,7 @@ class _EsOsLogSenderBase(LogSender):
 
 class ElasticsearchSender(_EsOsLogSenderBase):
     _VERSION_WITH_MAPPING_TYPE_SUPPORT = 7
-
-    _LEGACY_TYPE = "journal_msg"
-
+    
     def __init__(self, *, config, **kwargs) -> None:
         super().__init__(
             sender_config=Config.create(sender_type=SenderType.elasticsearch, config=config),
@@ -310,30 +308,47 @@ class ElasticsearchSender(_EsOsLogSenderBase):
     def _index_url(self, index_name: str) -> str:
         if not self._version:
             raise ValueError("Version has not been set")
-        index_url = super()._index_url(index_name)
-        # Always return the base index URL without appending any query parameters
-        return index_url
+        return super()._index_url(index_name)
 
     def _message_header(self, index_name: str) -> Dict[str, Any]:
-        header = super()._message_header(index_name)
-        if not self._version:
-            raise ValueError("Version has not been set")
-        if self._version.major <= self._VERSION_WITH_MAPPING_TYPE_SUPPORT:
-            header["index"].update({"_type": self._LEGACY_TYPE})
-        return header
+        return super()._message_header(index_name)
 
     def _create_mapping(self, message: Dict[str, Any]) -> Dict[str, Any]:
-        mapping = super()._create_mapping(message)
-        if not self._version:
-            raise ValueError("Version has not been set")
-        if self._version.major <= self._VERSION_WITH_MAPPING_TYPE_SUPPORT:
-            mapping["mappings"].update(
-                {
-                    self._LEGACY_TYPE: {"properties": deepcopy(mapping["mappings"]["properties"])},
+        # Create the mapping according to the new format without using unsupported parameters.
+        mapping = {
+            "mappings": {
+                "properties": {
+                    "SYSTEMD_SESSION": {"type": "text"},
+                    "SESSION_ID": {"type": "text"},
+                    "CMDLINE": {"type": "text"},
+                    "SYSTEMD_SLICE": {"type": "text"},
+                    "PRIORITY": {"type": "integer"},
+                    "MESSAGE": {"type": "text"},
+                    "TRANSPORT": {"type": "text"},
+                    "COMM": {"type": "text"},
+                    "CAP_EFFECTIVE": {"type": "text"},
+                    "MACHINE_ID": {"type": "text"},
+                    "SYSLOG_IDENTIFIER": {"type": "text"},
+                    "SYSLOG_FACILITY": {"type": "text"},
+                    "SYSTEMD_CGROUP": {"type": "text"},
+                    "BOOT_ID": {"type": "text"},
+                    "GID": {"type": "integer"},
+                    "PID": {"type": "integer"},
+                    "REALTIME_TIMESTAMP": {"type": "float"},
+                    "SELINUX_CONTEXT": {"type": "text"},
+                    "UID": {"type": "text"},
+                    "STREAM_ID": {"type": "text"},
+                    "EXE": {"type": "text"},
+                    "HOSTNAME": {"type": "text"},
+                    "SYSTEMD_UNIT": {"type": "text"},
+                    "RUNTIME_SCOPE": {"type": "text"},
+                    # Add other fields as needed dynamically
+                    **self._message_fields(message),
                 }
-            )
-            del mapping["mappings"]["properties"]
+            }
+        }
         return mapping
+
 
 
 class OpenSearchSender(_EsOsLogSenderBase):
